@@ -43,7 +43,7 @@ export const listingController = {
         return res.status(400).json({ message: 'Valid weekendPrice is required.' });
       }
 
-      const newListing = new temporaryLIsting({
+      const newListing = new Listing({
         hostId: req.user._id,
         placeType,
         roomType,
