@@ -76,11 +76,15 @@ confirmBooking: async (req, res) => {
   try {
     const { bookingId } = req.params;
 
+    // Find the temporary booking
     const temporaryBooking = await TemporaryBooking.findById(bookingId);
     if (!temporaryBooking) {
       return res.status(404).json({ message: 'Booking not found.' });
     }
+
     const { listingId, startDate, endDate, userId, paymentIntentId } = temporaryBooking;
+
+    // Check for conflicting confirmed bookings
     const existingConfirmedBooking = await ConfirmedBooking.findOne({
       listingId,
       $or: [
@@ -90,16 +94,18 @@ confirmBooking: async (req, res) => {
     if (existingConfirmedBooking) {
       return res.status(400).json({ message: 'Dates already confirmed for another booking.' });
     }
+
+    // Retrieve the payment intent
     const paymentIntent = await stripeClient.paymentIntents.retrieve(paymentIntentId);
 
     if (paymentIntent.status === 'requires_confirmation') {
       const confirmedPaymentIntent = await stripeClient.paymentIntents.confirm(paymentIntentId, {
-        payment_method: paymentIntent.payment_method, 
-        return_url: 'http://localhost:4000/', 
-
+        payment_method: paymentIntent.payment_method,
+        return_url: 'http://localhost:4000/',
       });
 
       if (confirmedPaymentIntent.status === 'succeeded') {
+        // Create the confirmed booking
         const confirmedBooking = await ConfirmedBooking.create({
           userId,
           listingId,
@@ -109,9 +115,37 @@ confirmBooking: async (req, res) => {
           totalPrice: temporaryBooking.totalPrice,
         });
 
+        // Delete the temporary booking
         await TemporaryBooking.findByIdAndDelete(bookingId);
 
-        res.status(201).json({ message: 'Booking confirmed.', confirmedBooking });
+        // Fetch guest data
+        const guest = await Host.findById(userId);
+        if (!guest) {
+          return res.status(404).json({ message: 'Guest not found.' });
+        }
+
+        // Fetch listing details
+        const listing = await Listing.findById(listingId);
+        if (!listing) {
+          return res.status(404).json({ message: 'Listing not found.' });
+        }
+
+        // Prepare email data
+        const emailData = {
+          userName: guest.userName || 'Valued Guest', // Default to a generic name if undefined
+          email: guest.email,
+          confirmedBooking: {
+            ...confirmedBooking._doc,
+            listingId: { title: listing.title }, // Add listing title for email
+          },
+        };
+
+        // Send confirmation email
+        // console.log("data",emailData.email, emailData.userName, emailData.confirmedBooking);
+        
+        await sendConfirmationEmail(emailData.email, emailData.userName, emailData.confirmedBooking);
+
+        res.status(201).json({ message: 'Booking confirmed and email sent.', confirmedBooking });
       } else {
         return res.status(400).json({ message: 'Payment not completed successfully after confirmation.' });
       }
@@ -123,6 +157,7 @@ confirmBooking: async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 },
+
 
 deleteBooking: async (req, res) => {
   try {
