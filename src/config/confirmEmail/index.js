@@ -31,7 +31,7 @@ const sendConfirmationEmail = async (userId, confirmedBooking) => {
           <body>
             <div class="container">
               <div class="header">
-                <img src="https://s.rozee.pk/company_logos/00/cpl_34362578003607.png" alt="Logo" />
+                <img src="https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.zenn.com%2Flogo-ideas%2Frental-logo&psig=AOvVaw0fNhbeOJOUEYeT-5dlkb15&ust=1736356602946000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCKC50MeO5IoDFQAAAAAdAAAAABAE" alt="Logo" />
                 <h2>Booking Confirmation</h2>
               </div>
               <div class="body">
